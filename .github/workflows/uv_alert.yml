@@ -1,0 +1,29 @@
+name: UV Alert  # just a display name, shows up in GitHub's UI
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # runs daily at 5am UTC = 7am Berlin time (summer)
+  workflow_dispatch:      # also allows you to trigger it manually from GitHub
+
+jobs:
+  run-uv-alert:
+    runs-on: ubuntu-latest  # spins up a fresh Linux machine for each run
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4  # downloads your repo onto that machine
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests python-dotenv  # installs what your script needs
+
+      - name: Run UV alert script
+        env:                                          # injects your secrets as environment variables
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          RECIPIENT_EMAIL: ${{ secrets.RECIPIENT_EMAIL }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python uv_alert.py
