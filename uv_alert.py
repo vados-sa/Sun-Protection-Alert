@@ -1,5 +1,10 @@
+import os
+import smtplib
 import requests
 from collections import defaultdict
+from email.message import EmailMessage
+from dotenv import load_dotenv
+load_dotenv()
 
 # Berlin's coordinates
 LATITUDE = 52.52
@@ -35,10 +40,11 @@ for hour, uv in zip(hours, uv_values):
     if uv > 2:
         uv_hours.append((hour, uv))
 
-print("\n--- Sun Protection Alert ---")
+# Collect alert lines (used for both terminal output and email body)
+lines = ["--- Sun Protection Alert ---"]
 
 if not uv_hours:
-    print("UV levels are low all day. No sunscreen needed — enjoy your time outside!")
+    lines.append("UV levels are low all day. No sunscreen needed — enjoy your time outside!")
 else:
     # Group risky hours by date (e.g. "2026-04-14T11:00" → key "2026-04-14")
     by_day = defaultdict(list)
@@ -46,7 +52,7 @@ else:
         date = hour.split("T")[0]
         by_day[date].append((hour, uv))
 
-    # Print one alert per day
+    # Build one alert per day
     for date, day_hours in by_day.items():
         peak_uv = max(uv for _, uv in day_hours)
 
@@ -68,5 +74,24 @@ else:
         first_hour = day_hours[0][0].split("T")[1]
         last_hour = day_hours[-1][0].split("T")[1]
 
-        print(f"\n{date}: UV risk is {risk} (peak index: {peak_uv}) between {first_hour} and {last_hour}.")
-        print(advice)
+        lines.append(f"\n{date}: UV risk is {risk} (peak index: {peak_uv}) between {first_hour} and {last_hour}.")
+        lines.append(advice)
+
+# Join all lines into a single string and print to terminal
+alert_text = "\n".join(lines)
+print(alert_text)
+
+# Send the alert by email
+def send_email(subject, body):
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = os.environ.get("GMAIL_ADDRESS")
+    msg["To"] = os.environ.get("RECIPIENT_EMAIL")
+    msg.set_content(body)
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(os.environ.get("GMAIL_ADDRESS"), os.environ.get("GMAIL_APP_PASSWORD"))
+        smtp.send_message(msg)
+
+send_email("UV Alert for Berlin", alert_text)
+print("Email sent!")
