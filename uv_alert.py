@@ -16,8 +16,14 @@ url = (
 )
 
 # Make the HTTP GET request and parse the JSON response
-response = requests.get(url)
-data = response.json()
+try:
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    data = response.json()
+except requests.RequestException as exc:
+    raise SystemExit(f"Failed to fetch UV forecast data: {exc}")
+except ValueError as exc:
+    raise SystemExit(f"Failed to parse UV forecast response as JSON: {exc}")
 
 # Extract the two parallel lists we care about
 hours = data["hourly"]["time"]
